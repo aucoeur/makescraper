@@ -1,30 +1,108 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 
-	"github.com/gocolly/colly"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/chromedp"
 )
 
-// main() contains code adapted from example found in Colly's docs:
-// http://go-colly.org/docs/examples/basic/
+// // yoinkCode is the opposite of yeetCode ... 🙃🥲
+// func yoinkCode(nodes []*cdp.Node) chromedp.Tasks {
+// 	fmt.Println("preparing to smol yoink..")
+// 	return chromedp.Tasks{
+// 		// chromedp.Navigate(`https://leetcode.com/problemset/all/`),
+// 		chromedp.Navigate(`https://leetcode.com/problemset/all/?search=two`),
+
+// 		// Wait until the bottom of the page loads (where you can find the show all & pagination)
+// 		chromedp.WaitVisible(`.reactable-pagination`, chromedp.ByQuery),
+
+// 		// Scrolls to footer
+// 		chromedp.ScrollIntoView(`#footer-root`, chromedp.ByID),
+
+// 		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problems
+// 		chromedp.Nodes(`td[label='Title'] > div > a:only-child`, &nodes, chromedp.ByQueryAll),
+// 	}
+// }
+
+// Problem struct stores basic data of each problem
+// type Problem struct {
+// 	ID         string `json:"id"`
+// 	Title      string `json:"title"`
+// 	URL        string `json:"url"`
+// 	Difficulty string `json:"difficulty"`
+// }
+
 func main() {
-	// Instantiate default collector
-	c := colly.NewCollector()
+	// set chromedp options
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.DisableGPU,
+		// Set the headless flag to false to display the browser window
+		chromedp.Flag("headless", true),
+	)
 
-	// On every a element which has href attribute call callback
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-                link := e.Attr("href")
+	// "ExecAllocator is an Allocator which starts new browser processes on the host machine"
+	fmt.Println("Creating new instance..")
+	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
 
-		// Print link
-                fmt.Printf("Link found: %q -> %s\n", e.Text, link)
-	})
+	// Start new chrome instance / context
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
 
-	// Before making a request print "Visiting ..."
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
-	})
+	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 
-	// Start scraping on https://hackerspaces.org
-	c.Visit("https://hackerspaces.org/")
+	// Create arrays of cdproto type Node
+	// var nodes []*cdp.Node
+	var rows []*cdp.Node
+	// var titles []map[string]string
+
+	// Run action/task list (yoinkcode)
+	// if err := chromedp.Run(ctx, yoinkCode(nodes)); err != nil {
+	// 	fmt.Printf("something ducked up: %s", err)
+	// }
+
+	if err := chromedp.Run(ctx,
+		// chromedp.Navigate(`https://leetcode.com/problemset/all/`),
+
+		// Starting smol..
+		chromedp.Navigate(`https://leetcode.com/problemset/all/?search=power%20of&difficulty=Easy`),
+
+		// Wait until the bottom of the page loads (where you can find the show all & pagination)
+		chromedp.WaitVisible(`.reactable-pagination`, chromedp.ByQuery),
+
+		// Scrolls to footer
+		chromedp.ScrollIntoView(`#footer-root`, chromedp.ByID),
+
+		// Start with table rows
+		chromedp.Nodes(`.reactable-data > tr`, &rows, chromedp.ByQueryAll),
+
+		// prints out: 2021/02/21 13:32:44 map[label:Title value:Consecutive Characters]
+		// chromedp.AttributesAll(`td[label='Title']`, &titles, chromedp.ByQueryAll),
+
+		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problem links
+		// chromedp.Nodes(`td[label='Title'] > div > a:only-child`, &nodes, chromedp.ByQueryAll),
+	); err != nil {
+		fmt.Printf("something ducked up: %s", err)
+	}
+	log.Println("Found rows", len(rows))
+
+	// var ProblemSets []*Problem
+
+	// loops through td nodes
+	const childSelector = `.reactable-data > tr:nth-child(%d) > td:nth-child(2)`
+	var col string
+	for i := 0; i < len(rows); i++ {
+		// log.Println(nodes[i].AttributeValue("href"))
+		if err := chromedp.Run(ctx,
+			chromedp.Text(fmt.Sprintf(childSelector, i+1), &col),
+		); err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("row %d: value = %s\n", i, col)
+		// log.Println(titles[i])
+	}
 }

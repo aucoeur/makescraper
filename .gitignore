@@ -15,3 +15,8 @@
 vendor/
 .vscode/
 makescraper
+scraper.code-workspace
+.DS_Store
+scrape.no
+ngo-scraper
+scrapedp.go
