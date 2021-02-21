@@ -9,31 +9,23 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// // yoinkCode is the opposite of yeetCode ... 🙃🥲
+// Problem struct stores basic data of each problem
+// type Problem struct {
+// 	ID         string `json:"id"`
+// 	Title      string `json:"title"`
+// 	URL        string `json:"url"`
+// 	Difficulty string `json:"difficulty"`
+// }
+
+// yoinkCode is the opposite of yeetCode ... 🙃🥲
+// [TODO] figure out why separating tasks into own func breaks the action func
 // func yoinkCode(nodes []*cdp.Node) chromedp.Tasks {
 // 	fmt.Println("preparing to smol yoink..")
 // 	return chromedp.Tasks{
-// 		// chromedp.Navigate(`https://leetcode.com/problemset/all/`),
-// 		chromedp.Navigate(`https://leetcode.com/problemset/all/?search=two`),
-
-// 		// Wait until the bottom of the page loads (where you can find the show all & pagination)
-// 		chromedp.WaitVisible(`.reactable-pagination`, chromedp.ByQuery),
-
-// 		// Scrolls to footer
-// 		chromedp.ScrollIntoView(`#footer-root`, chromedp.ByID),
-
-// 		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problems
-// 		chromedp.Nodes(`td[label='Title'] > div > a:only-child`, &nodes, chromedp.ByQueryAll),
+// 		chromedp.Navigate(`https://leetcode.com/problemset/all/`),
+//              // [TODO] fill in the tasks
 // 	}
 // }
-
-// Problem struct stores basic data of each problem
-type Problem struct {
-	ID         string `json:"id"`
-	Title      string `json:"title"`
-	URL        string `json:"url"`
-	Difficulty string `json:"difficulty"`
-}
 
 func main() {
 	// set chromedp options
@@ -55,9 +47,9 @@ func main() {
 	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 
 	// Create arrays of cdproto type Node
-	// var nodes []*cdp.Node
 	var rows []*cdp.Node
-	// var titles []map[string]string
+	// var nodes []*cdp.Node
+	var titles []*cdp.Node
 
 	// Run action/task list (yoinkcode)
 	// if err := chromedp.Run(ctx, yoinkCode(nodes)); err != nil {
@@ -80,13 +72,14 @@ func main() {
 		chromedp.Nodes(`.reactable-data > tr`, &rows, chromedp.ByQueryAll),
 
 		// prints out: 2021/02/21 13:32:44 map[label:Title value:Consecutive Characters]
-		// chromedp.AttributesAll(`td[label='Title']`, &titles, chromedp.ByQueryAll),
+		chromedp.Value(`td[label='Title']`, &titles, chromedp.ByQueryAll),
 
 		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problem links
 		// chromedp.Nodes(`td[label='Title'] > div > a:only-child`, &nodes, chromedp.ByQueryAll),
 	); err != nil {
 		fmt.Printf("something ducked up: %s", err)
 	}
+
 	log.Println("Found rows", len(rows))
 
 	// var ProblemSets []*Problem
@@ -95,7 +88,7 @@ func main() {
 	const childSelector = `.reactable-data > tr:nth-child(%d) > td:nth-child(2)`
 	var col string
 	for i := 0; i < len(rows); i++ {
-		// log.Println(nodes[i].AttributeValue("href"))
+		log.Println(nodes[i].AttributeValue("href"))
 		if err := chromedp.Run(ctx,
 			chromedp.Text(fmt.Sprintf(childSelector, i+1), &col),
 		); err != nil {
