@@ -11,12 +11,12 @@ import (
 )
 
 // Problem struct stores basic data of each problem
-// type Problem struct {
-// 	ID         string `json:"id"`
-// 	Title      string `json:"title"`
-// 	URL        string `json:"url"`
-// 	Difficulty string `json:"difficulty"`
-// }
+type Problem struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	URL        string `json:"url"`
+	Difficulty string `json:"difficulty"`
+}
 
 // yoinkCode is the opposite of yeetCode ... 🙃🥲
 // [TODO] figure out why separating tasks into own func breaks the action func
