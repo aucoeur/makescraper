@@ -1,4 +1,4 @@
-module github.com/aucoeur/ngo-scraper
+module github.com/aucoeur/ngoscraper
 
 go 1.16
 

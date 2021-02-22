@@ -47,8 +47,8 @@ func main() {
 	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 
 	// Create arrays of cdproto type Node
-	var rows []*cdp.Node
-	// var nodes []*cdp.Node
+	// var rows []*cdp.Node
+	var links []*cdp.Node
 	var titles []*cdp.Node
 
 	// Run action/task list (yoinkcode)
@@ -56,6 +56,9 @@ func main() {
 	// 	fmt.Printf("something ducked up: %s", err)
 	// }
 
+	// Title Selector
+	selector := `td[label='Title']`
+	linkSelector := selector + `> div > a`
 	if err := chromedp.Run(ctx,
 		// chromedp.Navigate(`https://leetcode.com/problemset/all/`),
 
@@ -69,33 +72,39 @@ func main() {
 		chromedp.ScrollIntoView(`#footer-root`, chromedp.ByID),
 
 		// Start with table rows
-		chromedp.Nodes(`.reactable-data > tr`, &rows, chromedp.ByQueryAll),
-
-		// prints out: 2021/02/21 13:32:44 map[label:Title value:Consecutive Characters]
-		chromedp.Value(`td[label='Title']`, &titles, chromedp.ByQueryAll),
+		// chromedp.Nodes(`.reactable-data > tr`, &rows, chromedp.ByQueryAll),
 
 		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problem links
-		// chromedp.Nodes(`td[label='Title'] > div > a:only-child`, &nodes, chromedp.ByQueryAll),
+		chromedp.Nodes(linkSelector, &links, chromedp.ByQueryAll),
+
+		// Get Titles
+		chromedp.Nodes(selector, &titles, chromedp.ByQueryAll),
 	); err != nil {
 		fmt.Printf("something ducked up: %s", err)
 	}
 
-	log.Println("Found rows", len(rows))
+	log.Printf("Found %d titles", len(titles))
 
 	// var ProblemSets []*Problem
 
 	// loops through td nodes
-	const childSelector = `.reactable-data > tr:nth-child(%d) > td:nth-child(2)`
-	var col string
-	for i := 0; i < len(rows); i++ {
-		log.Println(nodes[i].AttributeValue("href"))
+	// siblingSelect := selector + `(%d).previousSibling`
+	const childSelector = `.reactable-data > tr:nth-child(%d) > td:nth-child(%d)`
+
+	var num, title, difficulty, link string
+
+	for i := 0; i < len(titles); i++ {
+		title = titles[i].AttributeValue(`value`)
+		link = links[i].AttributeValue(`href`)
+
 		if err := chromedp.Run(ctx,
-			chromedp.Text(fmt.Sprintf(childSelector, i+1), &col),
+			// Gets problem number
+			chromedp.Text(fmt.Sprintf(childSelector, i+1, 2), &num, chromedp.ByQuery),
+			// Gets Difficulty
+			chromedp.Text(fmt.Sprintf(childSelector+`> span`, i+1, 6), &difficulty, chromedp.ByQuery),
 		); err != nil {
 			log.Fatal(err)
 		}
-
-		fmt.Printf("row %d: value = %s\n", i, col)
-		// log.Println(titles[i])
+		fmt.Printf("#%s %s %s Link: %s\n", num, difficulty, title, link)
 	}
 }
