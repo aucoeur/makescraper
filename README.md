@@ -2,7 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/aucoeur/makescraper)](https://goreportcard.com/report/github.com/aucoeur/makescraper)
 
-_Create your very own web scraper and crawler using Go and [Colly](https://go-colly.org)!_
+_Create your very own web scraper and crawler using Go and ~~[Colly](https://go-colly.org)~~ __[Chromedp](https://pkg.go.dev/github.com/chromedp/chromedp)___ 😏
 
 ### 📚 Table of Contents
 
@@ -44,7 +44,7 @@ _Complete each task in the order they appear. Use [GitHub Task List](https://hel
 
 - [x] **IMPORTANT**: Complete the Web Scraper Workflow worksheet distributed in class.
 - [x] Create a `struct` to store your data.
-- [ ] Refactor the `c.OnHTML` callback on line `16` to use the selector(s) you tested while completing the worksheet.
+- [x] Refactor the `c.OnHTML` callback on line `16` to use the selector(s) you tested while completing the worksheet.
 - [x] Print the data you scraped to `stdout`.
 
 ##### Stretch Challenges
