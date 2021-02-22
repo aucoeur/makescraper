@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
@@ -18,8 +20,8 @@ type Problem struct {
 	Difficulty string `json:"difficulty"`
 }
 
-// yoinkCode is the opposite of yeetCode ... 🙃🥲
 // [TODO] figure out why separating tasks into own func breaks the action func
+// yoinkCode is the opposite of yeetCode ... 🙃🥲
 // func yoinkCode(nodes []*cdp.Node) chromedp.Tasks {
 // 	fmt.Println("preparing to smol yoink..")
 // 	return chromedp.Tasks{
@@ -27,6 +29,22 @@ type Problem struct {
 //              // [TODO] fill in the tasks
 // 	}
 // }
+
+// writeToFile creates output.json if the file doesn't exist, or appends if it does. Example from https://golang.org/pkg/os/#OpenFile
+func writeToFile(json []byte) {
+	filename := `output.json`
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := file.Write(json); err != nil {
+		file.Close() // ignore error; Write error takes precedence
+		log.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func main() {
 	// set chromedp options
@@ -45,74 +63,86 @@ func main() {
 	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
 
-	// ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	// Set timeout because reasons
+	ctx, cancel = context.WithTimeout(ctx, 1*time.Minute)
 
 	// Create arrays of cdproto type Node
-	// var rows []*cdp.Node
-	var links []*cdp.Node
-	var titles []*cdp.Node
+	var rows, titles, links []*cdp.Node
 
-	// Run action/task list (yoinkcode)
-	// if err := chromedp.Run(ctx, yoinkCode(nodes)); err != nil {
-	// 	fmt.Printf("something ducked up: %s", err)
-	// }
+	selector := `.reactable-data`
+	titleSelector := `td[label='Title']`
+	linkSelector := titleSelector + `> div > a`
 
-	// Title Selector
-	selector := `td[label='Title']`
-	linkSelector := selector + `> div > a`
 	if err := chromedp.Run(ctx,
-		// chromedp.Navigate(`https://leetcode.com/problemset/all/`),
+		chromedp.Navigate(`https://leetcode.com/problemset/all/`),
 
 		// Starting smol..
-		chromedp.Navigate(`https://leetcode.com/problemset/all/?search=power%20of&difficulty=Easy`),
+		// chromedp.Navigate(`https://leetcode.com/problemset/all/?search=power%20of&difficulty=Easy`),
 
-		// Wait until the bottom of the page loads (where you can find the show all & pagination)
-		chromedp.WaitVisible(`.reactable-pagination`, chromedp.ByQuery),
+		// Wait until table data is visible
+		chromedp.WaitVisible(".reactable-data", chromedp.ByQuery),
 
-		// Scrolls to footer
-		chromedp.ScrollIntoView(`#footer-root`, chromedp.ByID),
+		// Scroll to bottom of the table loads (where you can find the show all & pagination)
+		chromedp.ScrollIntoView(`.reactable-pagination`, chromedp.ByQuery),
 
-		// Start with table rows
-		// chromedp.Nodes(`.reactable-data > tr`, &rows, chromedp.ByQueryAll),
+		// Start By Getting Rows
+		chromedp.Nodes(selector+`> tr`, &rows, chromedp.ByQueryAll),
 
-		// Selector `td[label='Title'] > div > a:only-child` gets all the free/public problem links
+		// Sidenote: Selector `td[label='Title'] > div > a:only-child` gets all the free/public problem links
+		chromedp.Nodes(titleSelector, &titles, chromedp.ByQueryAll),
 		chromedp.Nodes(linkSelector, &links, chromedp.ByQueryAll),
-
-		// Get Titles
-		chromedp.Nodes(selector, &titles, chromedp.ByQueryAll),
 	); err != nil {
 		fmt.Printf("something ducked up: %s", err)
+		log.Fatal(err)
 	}
 
-	log.Printf("Found %d titles", len(titles))
+	log.Printf("Found %d titles", len(rows))
 
-	// var ProblemSets []*Problem
+	dataSelector := selector + `> tr:nth-child(%d) > td:nth-child(%d)`
 
-	// loops through td nodes
-	// siblingSelect := selector + `(%d).previousSibling`
-	const childSelector = `.reactable-data > tr:nth-child(%d) > td:nth-child(%d)`
-
+	var problems []*Problem
 	var num, title, difficulty, link string
 
-	for i := 0; i < len(titles); i++ {
-		title = titles[i].AttributeValue(`value`)
+	for i := 0; i < len(rows); i++ {
+
+		numSelector := fmt.Sprintf(dataSelector, i+1, 2)
+		difficultySelector := fmt.Sprintf(dataSelector+` > span`, i+1, 6)
+
 		link = links[i].AttributeValue(`href`)
+		// Gets Title
+		title = titles[i].AttributeValue(`value`)
 
 		if err := chromedp.Run(ctx,
 			// Gets problem number
-			chromedp.Text(fmt.Sprintf(childSelector, i+1, 2), &num, chromedp.ByQuery),
+			chromedp.Text(numSelector, &num, chromedp.ByQuery),
 			// Gets Difficulty
-			chromedp.Text(fmt.Sprintf(childSelector+`> span`, i+1, 6), &difficulty, chromedp.ByQuery),
+			chromedp.Text(difficultySelector, &difficulty, chromedp.ByQuery),
 		); err != nil {
 			log.Fatal(err)
 		}
+
 		problem := &Problem{
 			ID:         num,
 			Title:      title,
 			URL:        link,
 			Difficulty: difficulty,
 		}
-		problemJSON, _ := json.MarshalIndent(problem, "", "  ")
-		fmt.Println(string(problemJSON))
+		// Append problem to array of problems
+		problems = append(problems, problem)
+
+		// Make the JSON pretty
+		pJSON, err := json.MarshalIndent(problem, "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Added %s", string(pJSON))
 	}
+
+	// Make the JSON behave
+	jsonOutput, err := json.MarshalIndent(problems, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	writeToFile(jsonOutput)
 }
