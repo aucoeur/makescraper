@@ -65,6 +65,7 @@ func main() {
 
 	// Set timeout because reasons
 	ctx, cancel = context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 
 	// Create arrays of cdproto type Node
 	var rows, titles, links []*cdp.Node
